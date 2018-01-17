@@ -38,8 +38,8 @@ def withTempDir(Closure closure) {
 /**
  * Reads the CDDA device and outputs the entire bitstream in FLAC format.
  *
- * @param device the device descriptor (e.g. "/dev/sr0").
- * @param output the {@link java.io.File} to write the FLAC bitstream to.
+ * @param device the device descriptor (e.g. "/dev/sr0")
+ * @param output the {@code java.io.File} to write the FLAC bitstream to
  */
 void writeDiscAsFlac(String device, File output) {
 	
@@ -92,9 +92,9 @@ void writeDiscAsFlac(String device, File output) {
 /**
  * Reads the CDDA track index and returns an array of sample counts, one for each track.
  *
- * @param device the device descriptor.
+ * @param device the device descriptor
  *
- * @returns an array of sample counts, one for each track.
+ * @return an array of sample counts, one for each track
  */
 List<Integer> readTrackLengths(String device) {
 	
@@ -117,9 +117,9 @@ List<Integer> readTrackLengths(String device) {
 /**
  * Writes the chapter listing using the track lengths and track names.
  *
- * @param trackLength a {@link java.util.List} of integers corresponding to the sample count of each track, in order.
- * @param trackNames  a {@link java.util.List} corresponding to the name of each track, in order.
- * @param output      the {@link java.io.File} to write the chapter listing to in UTF-8.
+ * @param trackLength a {@code java.util.List} of integers corresponding to the sample count of each track, in order
+ * @param trackNames  a {@code java.util.List} corresponding to the name of each track, in order
+ * @param output      the {@code java.io.File} to write the chapter listing to in UTF-8
  */
 void writeChapterListing(List<Integer> trackLengths, List<String> trackNames, File output) {
 	
@@ -149,7 +149,7 @@ void writeChapterListing(List<Integer> trackLengths, List<String> trackNames, Fi
 /**
  * Writes the global Matroska XML tags to an output file.
  *
- * @param output the {@link java.io.File} to write the chapter listing to in UTF-8.
+ * @param output the {@code java.io.File} to write the chapter listing to in UTF-8
  */
 void writeGlobalTags(String artist, String album, String year, String genre, File output) {
 	
@@ -185,9 +185,9 @@ void writeGlobalTags(String artist, String album, String year, String genre, Fil
 /**
  * Writes the track Matroska XML tags to an outpput file.
  *
- * @param trackLength a {@link java.util.List} of integers corresponding to the sample count of each track, in order.
- * @param trackNames  a {@link java.util.List} corresponding to the name of each track, in order.
- * @param output      the {@link java.io.File} to write the XML listing to in UTF-8.
+ * @param trackLength a {@code java.util.List} of integers corresponding to the sample count of each track, in order
+ * @param trackNames  a {@code java.util.List} corresponding to the name of each track, in order
+ * @param output      the {@code java.io.File} to write the XML listing to in UTF-8
  */
 void writeTrackTags(List<Integer> trackLengths, List<String> trackNames, File output) {
 	
@@ -231,9 +231,9 @@ void writeMatroskaMux(File flac, File cover, File globalTags, File trackTags, Fi
 /*
  * Displays a prompt to STDOUT and then listens for input on STDIN until EOL.
  *
- * @param prompt the prompt to display before waiting for input.
+ * @param prompt the prompt to display before waiting for input
  *
- * @return the line read from STDIN.
+ * @return the line read from STDIN
  */
 String readln(String prompt) {
 	System.console().readLine(prompt);
