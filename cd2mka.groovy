@@ -132,11 +132,14 @@ void writeChapterListing(List<Integer> trackLengths, List<String> trackNames, Fi
 	
 	trackLengths.eachWithIndex { trackLength, trackIndex ->
 		
-		def seconds     = total / 44100.0
-		def chapterBase = "CHAPTER${String.format("%02d", trackIndex + 1)}"
+		def hours        = Math.floor(total / 158760000).intValue()
+		def minutes      = Math.floor((total - hours * 158760000) / 2646000).intValue()
+		def seconds      = Math.floor((total - hours * 158760000 - minutes * 2646000) / 44100).intValue()
+		def milliseconds = Math.floor((total - hours * 158760000 - minutes * 2646000 - seconds * 44100) / 44.1).intValue()
+		def chapterBase  = "CHAPTER${String.format("%02d", trackIndex + 1)}"
 		
-		writer.println("${chapterBase}=${String.format("%02d", (seconds / 3600).toInteger())}" +
-				":${String.format("%02d", (seconds / 60).toInteger())}:${String.format("%.6f", seconds.remainder(60))}")
+		writer.println("${chapterBase}=${String.format("%02d", hours)}:${String.format("%02d", minutes)}:" +
+				"${String.format("%02d", seconds)}.${String.format("%03d", milliseconds)}")
 		writer.println("${chapterBase}NAME=${trackNames[trackIndex]}")
 		
 		total += trackLength
