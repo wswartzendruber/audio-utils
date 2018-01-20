@@ -150,18 +150,28 @@ void writeChapterListing(List<Integer> trackLengths, List<String> trackNames, Fi
 }
 
 /**
- * Writes the global Matroska XML tags to an output file.
+ * Writes the Matroska XML tags to an output file.
  *
- * @param output the {@code java.io.File} to write the chapter listing to in UTF-8
+ * @param artist       the artist of the album
+ * @param album        the title of the album
+ * @param genre        the genre of the album
+ * @param trackLengths the sample length of each track, in order
+ * @param trackNames   the name of each track, in order
+ * @param output       the {@code java.io.File} to write the chapter listing to in UTF-8
  */
-void writeGlobalTags(String artist, String album, String year, String genre, File output) {
+void writeTags(String artist, String album, String year, String genre, List<Integer> trackLengths, List<String> trackNames
+		, File output) {
 	
 	def outputStream = new FileOutputStream(output)
 	def writer       = new PrintWriter(new OutputStreamWriter(outputStream, "UTF-8"))
 	def xml          = new MarkupBuilder(writer)
+	def random       = new Random()
 	
 	xml.Tags() {
 		Tag() {
+			Targets() {
+				TargetTypeValue("50")
+			}
 			Simple() {
 				Name("TITLE")
 				String(album)
@@ -179,35 +189,18 @@ void writeGlobalTags(String artist, String album, String year, String genre, Fil
 				String(genre)
 			}
 		}
-	}
-	
-	writer.flush()
-	outputStream.close()
-}
-
-/**
- * Writes the track Matroska XML tags to an outpput file.
- *
- * @param trackLength a {@code java.util.List} of integers corresponding to the sample count of each track, in order
- * @param trackNames  a {@code java.util.List} corresponding to the name of each track, in order
- * @param output      the {@code java.io.File} to write the XML listing to in UTF-8
- */
-void writeTrackTags(List<Integer> trackLengths, List<String> trackNames, File output) {
-	
-	def outputStream = new FileOutputStream(output)
-	def writer       = new PrintWriter(new OutputStreamWriter(outputStream, "UTF-8"))
-	def xml          = new MarkupBuilder(writer)
-	
-	xml.Tags() {
 		trackLengths.eachWithIndex { trackLength, trackIndex ->
 			Tag() {
+				Targets() {
+					TargetTypeValue("30")
+				}
 				Simple() {
 					Name("TITLE")
 					String(trackNames[trackIndex])
 				}
 				Simple() {
 					Name("PART_NUMBER")
-					String(trackIndex + 1)
+					String(String.format("%02d", trackIndex + 1))
 				}
 				Simple() {
 					Name("SAMPLES")
@@ -221,11 +214,21 @@ void writeTrackTags(List<Integer> trackLengths, List<String> trackNames, File ou
 	outputStream.close()
 }
 
-void writeMatroskaMux(File flac, File cover, File globalTags, File trackTags, File chapters, String title, File output) {
+/**
+ * Muxes the final Matroska output.
+ *
+ * @param flac     the temporary FLAC file
+ * @param cover    the temporary cover file
+ * @param tags     the temporary tags file
+ * @param chapters the temporary chapters file
+ * @param title    the title for the Matroska output file
+ * @param output   the output Matroska file
+ */
+void writeMatroskaMux(File flac, File cover, File tags, File chapters, String title, File output) {
 	
 	def mkvmergeProcess = [ "mkvmerge", "--disable-track-statistics-tags", "--output", output, "--title", title, "--chapters" \
-			, chapters, "--global-tags", globalTags, "--attachment-name", "Cover", "--attachment-mime-type", "image/jpeg" \
-			, "--attach-file", cover, flac, "--tags", "0:${trackTags}"].execute()
+			, chapters, "--global-tags", tags, "--attachment-name", "Cover", "--attachment-mime-type", "image/jpeg" \
+			, "--attach-file", cover, flac ].execute()
 	
 	if (mkvmergeProcess.waitFor())
 		throw new Exception("mkvmerge process exited unsuccessfully.")
@@ -254,15 +257,14 @@ if (args.length != 3) {
 
 withTempDir { tempDir ->
 	
-	def device         = args[0]
-	def coverFile      = new File(args[1])
-	def outputFile     = new File(args[2])
-	def flacFile       = new File(tempDir, "audio.flac")
-	def chaptersFile   = new File(tempDir, "chapters.txt")
-	def globalTagsFile = new File(tempDir, "global-tags.xml")
-	def trackTagsFile  = new File(tempDir, "track-tags.xml")
-	def trackLengths   = readTrackLengths(device)
-	def trackNames     = []
+	def device       = args[0]
+	def coverFile    = new File(args[1])
+	def outputFile   = new File(args[2])
+	def flacFile     = new File(tempDir, "audio.flac")
+	def chaptersFile = new File(tempDir, "chapters.txt")
+	def tagsFile     = new File(tempDir, "tags.xml")
+	def trackLengths = readTrackLengths(device)
+	def trackNames   = []
 	
 	println("Beginning background rip...")
 	println()
@@ -283,8 +285,7 @@ withTempDir { tempDir ->
 	}
 	
 	writeChapterListing(trackLengths, trackNames, chaptersFile)
-	writeGlobalTags(artist, album, year, genre, globalTagsFile)
-	writeTrackTags(trackLengths, trackNames, trackTagsFile)
+	writeTags(artist, album, year, genre, trackLengths, trackNames, tagsFile)
 	
 	println()
 	print("Still ripping...")
@@ -294,7 +295,7 @@ withTempDir { tempDir ->
 	println("DONE")
 	print("Muxing to Matroska...")
 	
-	writeMatroskaMux(flacFile, coverFile, globalTagsFile, trackTagsFile, chaptersFile, "${artist}: ${album}", outputFile)
+	writeMatroskaMux(flacFile, coverFile, tagsFile, chaptersFile, "${artist}: ${album}", outputFile)
 	
 	println("DONE")
 }
