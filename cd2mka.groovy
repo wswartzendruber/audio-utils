@@ -39,7 +39,7 @@ def withTempDir(Closure closure) {
  * Reads the CDDA device and outputs the entire bitstream in FLAC format.
  *
  * @param device the device descriptor (e.g. "/dev/sr0")
- * @param output the {@code java.io.File} to write the FLAC bitstream to
+ * @param output the file to write the FLAC bitstream to
  */
 void writeDiscAsFlac(String device, File output) {
 	
@@ -117,9 +117,9 @@ List<Integer> readTrackLengths(String device) {
 /**
  * Writes the chapter listing using the track lengths and track names.
  *
- * @param trackLength a {@code java.util.List} of integers corresponding to the sample count of each track, in order
- * @param trackNames  a {@code java.util.List} corresponding to the name of each track, in order
- * @param output      the {@code java.io.File} to write the chapter listing to in UTF-8
+ * @param trackLength a list of integers corresponding to the sample count of each track, in order
+ * @param trackNames  a list of corresponding to the name of each track, in order
+ * @param output      the file to write the chapter listing to in UTF-8
  */
 void writeChapterListing(List<Integer> trackLengths, List<String> trackNames, File output) {
 	
@@ -157,7 +157,7 @@ void writeChapterListing(List<Integer> trackLengths, List<String> trackNames, Fi
  * @param genre        the genre of the album
  * @param trackLengths the sample length of each track, in order
  * @param trackNames   the name of each track, in order
- * @param output       the {@code java.io.File} to write the chapter listing to in UTF-8
+ * @param output       the file to write the chapter listing to in UTF-8
  */
 void writeTags(String artist, String album, String year, String genre, List<Integer> trackLengths, List<String> trackNames
 		, File output) {
