@@ -115,34 +115,54 @@ List<Integer> readTrackLengths(String device) {
 }
 
 /**
+ * Returns a formatted timestamp reflecting the sample count.
+ *
+ * @param samples the sample count
+ */
+String timeStamp(long samples) {
+	
+	def hours       = Math.floor(samples / 158760000.0).intValue()
+	def minutes     = Math.floor((samples - hours * 158760000) / 2646000).intValue()
+	def seconds     = Math.floor((samples - hours * 158760000 - minutes * 2646000) / 44100).intValue()
+	def nanoseconds = Math.floor((samples - hours * 158760000 - minutes * 2646000 - seconds * 44100) / 44.1).intValue()
+	
+	return "${String.format("%02d", hours)}:${String.format("%02d", minutes)}:" \
+			+ "${String.format("%02d", seconds)}.${String.format("%-9s", nanoseconds).replace(" ", "0")}"
+}
+
+/**
  * Writes the chapter listing using the track lengths and track names.
  *
  * @param trackLength a list of integers corresponding to the sample count of each track, in order
  * @param trackNames  a list of corresponding to the name of each track, in order
  * @param output      the file to write the chapter listing to in UTF-8
  */
-void writeChapterListing(List<Integer> trackLengths, List<String> trackNames, File output) {
+void writeChapterListing(List<Integer> trackLengths, List<String> trackNames, List<Long> trackUids, File output) {
 	
 	if (trackLengths.size() != trackNames.size())
 		throw new Exception("INTERNAL ERROR: trackLengths and trackNames must have the same element count.")
 	
 	def outputStream = new FileOutputStream(output)
 	def writer       = new PrintWriter(new OutputStreamWriter(outputStream, "UTF-8"))
-	def total        = 0 
+	def xml          = new MarkupBuilder(writer)
+	def total        = 0
 	
-	trackLengths.eachWithIndex { trackLength, trackIndex ->
-		
-		def hours        = Math.floor(total / 158760000).intValue()
-		def minutes      = Math.floor((total - hours * 158760000) / 2646000).intValue()
-		def seconds      = Math.floor((total - hours * 158760000 - minutes * 2646000) / 44100).intValue()
-		def milliseconds = Math.floor((total - hours * 158760000 - minutes * 2646000 - seconds * 44100) / 44.1).intValue()
-		def chapterBase  = "CHAPTER${String.format("%02d", trackIndex + 1)}"
-		
-		writer.println("${chapterBase}=${String.format("%02d", hours)}:${String.format("%02d", minutes)}:" +
-				"${String.format("%02d", seconds)}.${String.format("%03d", milliseconds)}")
-		writer.println("${chapterBase}NAME=${trackNames[trackIndex]}")
-		
-		total += trackLength
+	xml.mkp.xmlDeclaration(version: "1.0", encoding: "utf-8")
+	
+	xml.Chapters() {
+		EditionEntry() {
+			trackLengths.eachWithIndex { length, index ->
+				ChapterAtom() {
+					ChapterUID(trackUids[index])
+					ChapterTimeStart(timeStamp(total))
+					ChapterDisplay() {
+						ChapterString(trackNames[index])
+						ChapterLanguage("und")
+					}
+				}
+				total += length
+			}
+		}
 	}
 	
 	writer.flush()
@@ -160,17 +180,18 @@ void writeChapterListing(List<Integer> trackLengths, List<String> trackNames, Fi
  * @param output       the file to write the chapter listing to in UTF-8
  */
 void writeTags(String artist, String album, String year, String genre, List<Integer> trackLengths, List<String> trackNames
-		, File output) {
+		, List<Long> trackUids, File output) {
 	
 	def outputStream = new FileOutputStream(output)
 	def writer       = new PrintWriter(new OutputStreamWriter(outputStream, "UTF-8"))
 	def xml          = new MarkupBuilder(writer)
-	def random       = new Random()
+	
+	xml.mkp.xmlDeclaration(version: "1.0", encoding: "utf-8")
 	
 	xml.Tags() {
 		Tag() {
 			Targets() {
-				TargetTypeValue("50")
+				TargetTypeValue(50)
 			}
 			Simple() {
 				Name("TITLE")
@@ -181,7 +202,11 @@ void writeTags(String artist, String album, String year, String genre, List<Inte
 				String(artist)
 			}
 			Simple() {
-				Name("DATE_RECORDED")
+				Name("TOTAL_PARTS")
+				String(trackLengths.size())
+			}
+			Simple() {
+				Name("DATE_RELEASED")
 				String(year)
 			}
 			Simple() {
@@ -189,22 +214,19 @@ void writeTags(String artist, String album, String year, String genre, List<Inte
 				String(genre)
 			}
 		}
-		trackLengths.eachWithIndex { trackLength, trackIndex ->
+		trackLengths.eachWithIndex { length, index ->
 			Tag() {
 				Targets() {
-					TargetTypeValue("30")
+					TargetTypeValue(30)
+					ChapterUID(trackUids[index])
 				}
 				Simple() {
 					Name("TITLE")
-					String(trackNames[trackIndex])
+					String(trackNames[index])
 				}
 				Simple() {
 					Name("PART_NUMBER")
-					String(String.format("%02d", trackIndex + 1))
-				}
-				Simple() {
-					Name("SAMPLES")
-					String(trackLength)
+					String(index + 1)
 				}
 			}
 		}
@@ -257,14 +279,16 @@ if (args.length != 3) {
 
 withTempDir { tempDir ->
 	
+	def random       = new Random()
 	def device       = args[0]
 	def coverFile    = new File(args[1])
 	def outputFile   = new File(args[2])
 	def flacFile     = new File(tempDir, "audio.flac")
-	def chaptersFile = new File(tempDir, "chapters.txt")
+	def chaptersFile = new File(tempDir, "chapters.xml")
 	def tagsFile     = new File(tempDir, "tags.xml")
 	def trackLengths = readTrackLengths(device)
 	def trackNames   = []
+	def trackUids    = []
 	
 	println("Beginning background rip...")
 	println()
@@ -284,8 +308,10 @@ withTempDir { tempDir ->
 		trackNames << readln("Track ${String.format("%02d", index + 1)}: ")
 	}
 	
-	writeChapterListing(trackLengths, trackNames, chaptersFile)
-	writeTags(artist, album, year, genre, trackLengths, trackNames, tagsFile)
+	trackLengths.size().times { trackUids.push(Math.abs(random.nextLong())) }
+	
+	writeChapterListing(trackLengths, trackNames, trackUids, chaptersFile)
+	writeTags(artist, album, year, genre, trackLengths, trackNames, trackUids, tagsFile)
 	
 	println()
 	print("Still ripping...")
