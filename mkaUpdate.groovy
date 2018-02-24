@@ -338,8 +338,6 @@ if (args.length != 2) {
 	return 1
 }
 
-
-
 withTempDir { tempDir ->
 	
 	println("Updating '${args[0]}' to '${args[1]}'")
