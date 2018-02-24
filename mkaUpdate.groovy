@@ -139,16 +139,52 @@ def readTags(File mka) {
 }
 
 /**
+ * Reads a 2011 Matroska track and gets its sample rate.
+ *
+ * @param mka the 2011 Matroska file
+ *
+ * @return the sample rate
+ */
+int sampleRate(File mka) {
+	
+	def pattern        = /^\|   \+ Sampling frequency: (\d+)$/
+	def mkvinfoProcess = [ "mkvinfo", mka ].execute()
+	def bufferedReader = new BufferedReader(new InputStreamReader(mkvinfoProcess.getInputStream()))
+	def sampleRate
+	
+	bufferedReader.eachLine { line ->
+		if (line ==~ pattern)
+			if (!sampleRate)
+				sampleRate = (line =~ pattern)[0][1].toInteger()
+			else
+				throw new Exception("Detected multiple possible sample rates.")
+	}
+	
+	if (mkvinfoProcess.waitFor())
+		throw new Exception("mkvinfo process exited unsuccessfully.")
+	
+	if (!sampleRate)
+		throw new Exception("No sample rate detected.")
+	
+	return sampleRate
+}
+
+/**
  * Returns a formatted timestamp reflecting the sample count.
  *
  * @param samples the sample count
  */
-String timeStamp(long samples) {
+String timeStamp(long samples, int sampleRate) {
 	
-	def hours       = Math.floor(samples / 158760000.0).intValue()
-	def minutes     = Math.floor((samples - hours * 158760000) / 2646000).intValue()
-	def seconds     = Math.floor((samples - hours * 158760000 - minutes * 2646000) / 44100).intValue()
-	def nanoseconds = Math.floor((samples - hours * 158760000 - minutes * 2646000 - seconds * 44100) / 0.0000441).intValue()
+	def samplesPerHour   = sampleRate * 60.0 * 60.0
+	def samplesPerMinute = sampleRate * 60.0
+	def otherFactor      = sampleRate / 1000000000.0
+	
+	def hours       = Math.floor(samples / samplesPerHour).intValue()
+	def minutes     = Math.floor((samples - hours * samplesPerHour) / samplesPerMinute).intValue()
+	def seconds     = Math.floor((samples - hours * samplesPerHour - minutes * samplesPerMinute) / sampleRate).intValue()
+	def nanoseconds = Math.floor((samples - hours * samplesPerHour - minutes * samplesPerMinute - seconds * sampleRate) \
+			/ otherFactor).intValue()
 	
 	return "${String.format("%02d", hours)}:${String.format("%02d", minutes)}:" \
 			+ "${String.format("%02d", seconds)}.${String.format("%-9s", nanoseconds).substring(0, 9).replace(" ", "0")}"
@@ -161,7 +197,8 @@ String timeStamp(long samples) {
  * @param trackNames  a list of corresponding to the name of each track, in order
  * @param output      the file to write the chapter listing to in UTF-8
  */
-void writeChapterListing(List<Integer> trackLengths, List<String> trackNames, List<Long> trackUids, File output) {
+void writeChapterListing(List<Integer> trackLengths, List<String> trackNames, List<Long> trackUids, int sampleRate \
+		, File output) {
 	
 	if (trackLengths.size() != trackNames.size())
 		throw new Exception("INTERNAL ERROR: trackLengths and trackNames must have the same element count.")
@@ -178,7 +215,7 @@ void writeChapterListing(List<Integer> trackLengths, List<String> trackNames, Li
 			trackLengths.eachWithIndex { length, index ->
 				ChapterAtom() {
 					ChapterUID(trackUids[index])
-					ChapterTimeStart(timeStamp(total))
+					ChapterTimeStart(timeStamp(total, sampleRate))
 					ChapterDisplay() {
 						ChapterString(trackNames[index])
 						ChapterLanguage("und")
@@ -314,6 +351,7 @@ withTempDir { tempDir ->
 	def chaptersFile = new File(tempDir, "chapters.xml")
 	def tagsFile     = new File(tempDir, "tags.xml")
 	def coverFile    = new File(tempDir, "cover.jpg")
+	def sampleRate   = sampleRate(oldMka)
 	def tags         = readTags(oldMka)
 	def trackLengths = parseTrackLengths(tags)
 	def trackNames   = parseTrackNames(tags)
@@ -328,7 +366,7 @@ withTempDir { tempDir ->
 	
 	trackLengths.size().times { trackUids.push(Math.abs(random.nextLong())) }
 	
-	writeChapterListing(trackLengths, trackNames, trackUids, chaptersFile)
+	writeChapterListing(trackLengths, trackNames, trackUids, sampleRate, chaptersFile)
 	writeTags(artist, album, year, genre, trackLengths, trackNames, trackUids, tagsFile)
 	writeMatroskaMux(flacFile, coverFile, tagsFile, chaptersFile, "${artist}: ${album}", outputFile)
 	
