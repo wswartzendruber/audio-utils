@@ -305,6 +305,8 @@ if (args.length != 2) {
 
 withTempDir { tempDir ->
 	
+	println("Updating '${args[0]}' to '${args[1]}'")
+	
 	def random       = new Random()
 	def oldMka       = new File(args[0])
 	def outputFile   = new File(args[1])
@@ -329,4 +331,6 @@ withTempDir { tempDir ->
 	writeChapterListing(trackLengths, trackNames, trackUids, chaptersFile)
 	writeTags(artist, album, year, genre, trackLengths, trackNames, trackUids, tagsFile)
 	writeMatroskaMux(flacFile, coverFile, tagsFile, chaptersFile, "${artist}: ${album}", outputFile)
+	
+	println("DONE")
 }
