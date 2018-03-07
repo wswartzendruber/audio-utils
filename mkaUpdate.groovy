@@ -170,14 +170,16 @@ int sampleRate(File mka) {
 }
 
 /**
- * Returns a formatted timestamp reflecting the sample count.
+ * Returns a formatted time stamp reflecting the sample count.
  *
  * @param samples    the sample count
  * @param sampleRate the sample rate
+ *
+ * @return formatted time stamp
  */
 String timeStamp(long samples, int sampleRate) {
 	
-	def samplesPerHour   = sampleRate * 60.0 * 60.0
+	def samplesPerHour   = sampleRate * 3600.0
 	def samplesPerMinute = sampleRate * 60.0
 	def otherFactor      = sampleRate / 1000000000.0
 	
