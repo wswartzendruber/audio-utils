@@ -115,10 +115,12 @@ List<Integer> readTrackLengths(String device) {
 }
 
 /**
- * Returns a formatted timestamp reflecting the sample count.
+ * Returns a formatted time stamp reflecting the sample count.
  *
  * @param samples    the sample count
  * @param sampleRate the sample rate
+ *
+ * @return formatted time stamp
  */
 String timeStamp(long samples, int sampleRate) {
 	
