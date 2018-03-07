@@ -127,7 +127,7 @@ String timeStamp(long samples) {
 	def nanoseconds = Math.floor((samples - hours * 158760000 - minutes * 2646000 - seconds * 44100) / 0.0000441).intValue()
 	
 	return "${String.format("%02d", hours)}:${String.format("%02d", minutes)}:" \
-			+ "${String.format("%02d", seconds)}.${String.format("%-9s", nanoseconds).substring(0, 9).replace(" ", "0")}"
+			+ "${String.format("%02d", seconds)}.${String.format("%9s", nanoseconds).substring(0, 9).replace(" ", "0")}"
 }
 
 /**

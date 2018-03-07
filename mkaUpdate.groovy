@@ -187,7 +187,7 @@ String timeStamp(long samples, int sampleRate) {
 			/ otherFactor).intValue()
 	
 	return "${String.format("%02d", hours)}:${String.format("%02d", minutes)}:" \
-			+ "${String.format("%02d", seconds)}.${String.format("%-9s", nanoseconds).substring(0, 9).replace(" ", "0")}"
+			+ "${String.format("%02d", seconds)}.${String.format("%9s", nanoseconds).substring(0, 9).replace(" ", "0")}"
 }
 
 /**
