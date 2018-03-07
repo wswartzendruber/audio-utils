@@ -117,14 +117,20 @@ List<Integer> readTrackLengths(String device) {
 /**
  * Returns a formatted timestamp reflecting the sample count.
  *
- * @param samples the sample count
+ * @param samples    the sample count
+ * @param sampleRate the sample rate
  */
-String timeStamp(long samples) {
+String timeStamp(long samples, int sampleRate) {
 	
-	def hours       = Math.floor(samples / 158760000.0).intValue()
-	def minutes     = Math.floor((samples - hours * 158760000) / 2646000).intValue()
-	def seconds     = Math.floor((samples - hours * 158760000 - minutes * 2646000) / 44100).intValue()
-	def nanoseconds = Math.floor((samples - hours * 158760000 - minutes * 2646000 - seconds * 44100) / 0.0000441).intValue()
+	def samplesPerHour   = sampleRate * 60.0 * 60.0
+	def samplesPerMinute = sampleRate * 60.0
+	def otherFactor      = sampleRate / 1000000000.0
+	
+	def hours       = Math.floor(samples / samplesPerHour).intValue()
+	def minutes     = Math.floor((samples - hours * samplesPerHour) / samplesPerMinute).intValue()
+	def seconds     = Math.floor((samples - hours * samplesPerHour - minutes * samplesPerMinute) / sampleRate).intValue()
+	def nanoseconds = Math.floor((samples - hours * samplesPerHour - minutes * samplesPerMinute - seconds * sampleRate) \
+			/ otherFactor).intValue()
 	
 	return "${String.format("%02d", hours)}:${String.format("%02d", minutes)}:" \
 			+ "${String.format("%02d", seconds)}.${String.format("%9s", nanoseconds).substring(0, 9).replace(" ", "0")}"
@@ -154,7 +160,7 @@ void writeChapterListing(List<Integer> trackLengths, List<String> trackNames, Li
 			trackLengths.eachWithIndex { length, index ->
 				ChapterAtom() {
 					ChapterUID(trackUids[index])
-					ChapterTimeStart(timeStamp(total))
+					ChapterTimeStart(timeStamp(total, 44100))
 					ChapterDisplay() {
 						ChapterString(trackNames[index])
 						ChapterLanguage("und")
