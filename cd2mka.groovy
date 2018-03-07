@@ -124,7 +124,7 @@ List<Integer> readTrackLengths(String device) {
  */
 String timeStamp(long samples, int sampleRate) {
 	
-	def samplesPerHour   = sampleRate * 60.0 * 60.0
+	def samplesPerHour   = sampleRate * 3600.0
 	def samplesPerMinute = sampleRate * 60.0
 	def otherFactor      = sampleRate / 1000000000.0
 	
