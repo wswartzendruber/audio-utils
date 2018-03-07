@@ -172,7 +172,8 @@ int sampleRate(File mka) {
 /**
  * Returns a formatted timestamp reflecting the sample count.
  *
- * @param samples the sample count
+ * @param samples    the sample count
+ * @param sampleRate the sample rate
  */
 String timeStamp(long samples, int sampleRate) {
 	
