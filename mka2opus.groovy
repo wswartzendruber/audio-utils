@@ -107,6 +107,4 @@ IO.withTempDir { tempDir ->
 				, "${String.format("%02d", index + 1)}. ${sanitizeFilePath(name)}.opus"), 128, name \
 				, artist, album, year, genre, coverFile)
 	}
-	
-	println("DONE")
 }
