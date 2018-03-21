@@ -1,6 +1,185 @@
+import groovy.util.XmlSlurper
 import groovy.xml.MarkupBuilder
 
 public class MKA {
+	
+	/**
+	 * Reads a Matroska file and outputs the cover attachment.
+	 *
+	 * @param mka    the Matroska file
+	 * @param output the output cover attachment
+	 */
+	public static void dumpCover(File mka, File output) {
+		
+		def mkvextractProcess = [ "mkvextract", "attachments", mka, "1:${output}" ].execute()
+		
+		if (mkvextractProcess.waitFor())
+			throw new Exception("mkvextract process exited unsuccessfully.")
+	}
+	
+	/**
+	 * Reads a Matroska file and outputs the first audio track.
+	 *
+	 * @param mka    the 2011 Matroska file
+	 * @param output the output FLAC file
+	 */
+	public static void dumpFlac(File mka, File output) {
+		
+		def mkvextractProcess = [ "mkvextract", "tracks", mka, "0:${output}" ].execute()
+		
+		if (mkvextractProcess.waitFor())
+			throw new Exception("mkvextract process exited unsuccessfully.")
+	}
+	
+	/**
+	 * Parses a Matroska chapters and returns an array of sample counts, one for each track, of where each track starts.
+	 *
+	 * @param chapters   the {@code XmlSlurper} chapters
+	 * @param sampleRate the sample rate of the audio tracks
+	 *
+	 * @return an array of sample lengths, one for each track, of where each track starts
+	 */
+	public static List<Long> parseChapterStartPoints(def chapters, int sampleRate) {
+		
+		def startPoints = []
+		
+		chapters.EditionEntry.ChapterAtom.each \
+				{ startPoints += parseTimeStamp(it.ChapterTimeStart.toString(), sampleRate) }
+		
+		return startPoints
+	}
+	
+	/**
+	 * Parses Matroska chapters and returns an array of names, one for each track.
+	 *
+	 * @param chapters the {@code XmlSlurper} chapters
+	 *
+	 * @return an array of names, one for each track
+	 */
+	public static List<String> parseChapterNames(def chapters) {
+		
+		def trackNames = []
+		
+		chapters.EditionEntry.ChapterAtom.each { trackNames += it.ChapterDisplay.ChapterString.toString() }
+		
+		return trackNames
+	}
+	
+	/**
+	 * Parses a time stamp into its sample length.
+	 *
+	 * @param timeStamp  the time stamp string in the format HH:MM:SS.NNNNNNNNN
+	 * @param sampleRate the sample rate factor to use
+	 *
+	 * @return the sample count for the specified time stamp at the specified sample rate
+	 */
+	private static long parseTimeStamp(String timeStamp, int sampleRate) {
+		
+		def pattern = /^(\d\d):(\d\d):(\d\d).(\d\d\d\d\d\d\d\d\d)$/
+		
+		if (timeStamp ==~ pattern) {
+			
+			def segments = (timeStamp =~ pattern)[0]
+			
+			return segments[1].toLong() * 3600 * sampleRate \
+					+ segments[2].toLong() * 60 * sampleRate \
+					+ segments[3].toLong() * sampleRate \
+					+ Math.round((segments[4].toDouble() / 1000000000.0) * sampleRate)
+			
+		} else {
+			
+			throw new Exception("Time code '${timeStamp}' cannot be parsed.")
+		}
+	}
+	
+	/**
+	 * Parses Matroska tags and returns a single, album-wide value.
+	 *
+	 * @param tags  the {@code XmlSlurper} tags
+	 * @param value the name of the album-wide value to parse
+	 *
+	 * @return a single, album-wide value
+	 */
+	public static String parseValue(def tags, String name) {
+		
+		def returnValue = null
+		
+		tags.Tag.findAll({ Tag -> Tag?.Targets?.TargetTypeValue == "50" }) \
+				.Simple?.findAll({ Simple -> Simple?.Name == name }) \
+				.each { Simple -> returnValue = Simple?.String.toString() }
+		
+		if (returnValue == null)
+			throw new Exception("Requested album-wide value '${name}' could not be parsed from tags.")
+		
+		return returnValue
+	}
+	
+	/**
+	 * Reads a Matroska file and extracts the chapters out of it.
+	 *
+	 * @param mka the Matroska file
+	 *
+	 * @return the chapter structure via {@code XmlSlurper}
+	 */
+	public static def readChapters(File mka) {
+		
+		def mkvextractProcess = [ "mkvextract", "chapters", mka ].execute()
+		def chapters          = new XmlSlurper().parse(mkvextractProcess.inputStream)
+		
+		if (mkvextractProcess.waitFor())
+			throw new Exception("mkvextract process exited unsuccessfully.")
+		
+		return chapters
+	}
+	
+	/**
+	 * Reads a Matroska file and extracts the tags out of it.
+	 *
+	 * @param mka the Matroska file
+	 *
+	 * @return the tag structure via {@code XmlSlurper}
+	 */
+	public static def readTags(File mka) {
+		
+		def mkvextractProcess = [ "mkvextract", "tags", mka ].execute()
+		def tags              = new XmlSlurper().parse(mkvextractProcess.inputStream)
+		
+		if (mkvextractProcess.waitFor())
+			throw new Exception("mkvextract process exited unsuccessfully.")
+		
+		return tags
+	}
+	
+	/**
+	 * Reads a Matroska track and gets its sample rate.
+	 *
+	 * @param mka the Matroska file
+	 *
+	 * @return the sample rate
+	 */
+	public static int sampleRate(File mka) {
+		
+		def pattern        = /^\|   \+ Sampling frequency: (\d+)$/
+		def mkvinfoProcess = [ "mkvinfo", mka ].execute()
+		def bufferedReader = new BufferedReader(new InputStreamReader(mkvinfoProcess.getInputStream()))
+		def sampleRate
+		
+		bufferedReader.eachLine { line ->
+			if (line ==~ pattern)
+				if (!sampleRate)
+					sampleRate = (line =~ pattern)[0][1].toInteger()
+				else
+					throw new Exception("Detected multiple possible sample rates.")
+		}
+		
+		if (mkvinfoProcess.waitFor())
+			throw new Exception("mkvinfo process exited unsuccessfully.")
+		
+		if (!sampleRate)
+			throw new Exception("No sample rate detected.")
+		
+		return sampleRate
+	}
 	
 	/**
 	 * Writes the chapter listing using the track lengths and track names.
