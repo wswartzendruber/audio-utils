@@ -5,6 +5,7 @@
  */
 
 import IO
+import MKA
 
 /**
  * Reads the CDDA device and outputs the entire bitstream in FLAC format.

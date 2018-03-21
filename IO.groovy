@@ -28,13 +28,10 @@ public class IO {
 			parent.delete()
 		}
 		
-		def temp = File.createTempFile("temp-", System.nanoTime().toString())
+		def temp = new File("temp-${System.nanoTime()}")
 		
-		temp.delete()
 		temp.mkdir()
-		
 		closure(temp)
-		
 		rmrf(temp)
 	}
 }

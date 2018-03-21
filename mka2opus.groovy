@@ -3,6 +3,7 @@
  */
 
 import IO
+import MKA
 
 /**
  * Decodes a single FLAC to multiple WAV files according to the length of each one in samples.
@@ -49,6 +50,18 @@ void encodeOpus(File wav, File opus, int bitrate, String title, String artist, S
 			throw new Exception("opusenc process exited unsuccessfully.")
 }
 
+/**
+ * Strips any possible invalid characters from a file path and returns the sanitized output.
+ *
+ * @param input the unsanitized file path
+ *
+ * @return the sanitized output
+ */
+String sanitizeFilePath(String input) {
+	
+	return input.replaceAll("[^a-zA-Z0-9\\s\\.\\-]", "_")
+}
+
 /*
  * BEGIN
  */
@@ -76,22 +89,22 @@ IO.withTempDir { tempDir ->
 	def album            = MKA.parseValue(tags, "TITLE")
 	def year             = MKA.parseValue(tags, "DATE_RELEASED")
 	def genre            = MKA.parseValue(tags, "GENRE")
-	def albumDir         = new File(new File(outputDir, artist), album)
+	def albumDir         = new File(new File(outputDir, sanitizeFilePath(artist)), sanitizeFilePath(album))
 	
 	MKA.dumpCover(mka, coverFile)
 	MKA.dumpFlac(mka, flacFile)
 	decodeFlacToTracks(flacFile, tempDir, trackStartPoints)
 	
-	/*if (albumDir.exists()) {
+	if (albumDir.exists()) {
 		System.err.println("Directory '${albumDir}' already exists.")
 		System.exit(2)
 	} else {
 		albumDir.mkdirs()
-	}*/
+	}
 
 	trackNames.eachWithIndex { name, index ->
 		encodeOpus(new File(tempDir, "${index}.wav"), new File(albumDir \
-				, "${String.format("%02d", index + 1)}. ${name.replaceAll("[^a-zA-Z0-9\\s\\.\\-]", "_")}.opus"), 128, name \
+				, "${String.format("%02d", index + 1)}. ${sanitizeFilePath(name)}.opus"), 128, name \
 				, artist, album, year, genre, coverFile)
 	}
 	
