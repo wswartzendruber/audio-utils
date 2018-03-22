@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+mkvmerge --disable-track-statistics-tags --output "$2" --title "$1" --chapters chapters.xml --global-tags tags.xml \
+		--attachment-name Cover --attachment-mime-type image/jpeg --attach-file cover.jpg audio.flac

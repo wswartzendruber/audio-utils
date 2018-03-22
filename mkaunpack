@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+mkvextract attachments "$1" 1:cover.jpg
+mkvextract tracks "$1" 0:audio.flac
+mkvextract tags "$1" > tags.xml
+mkvextract chapters "$1" > chapters.xml
