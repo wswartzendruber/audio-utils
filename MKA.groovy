@@ -4,6 +4,37 @@ import groovy.xml.MarkupBuilder
 public class MKA {
 	
 	/**
+	 * Reads a Matroska track and gets its channel count.
+	 *
+	 * @param mka the Matroska file
+	 *
+	 * @return the channel count
+	 */
+	public static int channelCount(File mka) {
+		
+		def pattern        = /^\|   \+ Channels: (\d+)$/
+		def mkvinfoProcess = [ "mkvinfo", mka ].execute()
+		def bufferedReader = new BufferedReader(new InputStreamReader(mkvinfoProcess.getInputStream()))
+		def channelCount
+		
+		bufferedReader.eachLine { line ->
+			if (line ==~ pattern)
+				if (!channelCount)
+					channelCount = (line =~ pattern)[0][1].toInteger()
+				else
+					throw new Exception("Detected multiple possible channel counts.")
+		}
+		
+		if (mkvinfoProcess.waitFor())
+			throw new Exception("mkvinfo process exited unsuccessfully.")
+		
+		if (!channelCount)
+			throw new Exception("No channel count detected.")
+		
+		return channelCount
+	}
+	
+	/**
 	 * Reads a Matroska file and outputs the cover attachment.
 	 *
 	 * @param mka    the Matroska file

@@ -2,6 +2,8 @@
  * This script will read a Matroska audio track from my personal library and generate a set of Opus files for it.
  */
 
+import groovyx.gpars.GParsPool
+
 import IO
 import MKA
 
@@ -59,7 +61,7 @@ void encodeOpus(File wav, File opus, int bitrate, String title, String artist, S
  */
 String sanitizeFilePath(String input) {
 	
-	return input.replaceAll("[^a-zA-Z0-9\\s\\.\\-]", "_")
+	return input.toLowerCase().replaceAll("\\s+", "-").replaceAll("[^a-z0-9\\-]", "").replaceAll("\\-+", "-")
 }
 
 /*
@@ -81,6 +83,7 @@ IO.withTempDir { tempDir ->
 	def flacFile         = new File(tempDir, "audio.flac")
 	def coverFile        = new File(tempDir, "cover.jpg")
 	def sampleRate       = MKA.sampleRate(mka)
+	def channelCount     = MKA.channelCount(mka)
 	def tags             = MKA.readTags(mka)
 	def chapters         = MKA.readChapters(mka)
 	def trackStartPoints = MKA.parseChapterStartPoints(chapters, sampleRate)
@@ -102,9 +105,11 @@ IO.withTempDir { tempDir ->
 		albumDir.mkdirs()
 	}
 
-	trackNames.eachWithIndex { name, index ->
-		encodeOpus(new File(tempDir, "${index}.wav"), new File(albumDir \
-				, "${String.format("%02d", index + 1)}. ${sanitizeFilePath(name)}.opus"), 128, name \
-				, artist, album, year, genre, coverFile)
+	GParsPool.withPool {
+		trackNames.eachWithIndexParallel { name, index ->
+			encodeOpus(new File(tempDir, "${index}.wav"), new File(albumDir \
+					, "${String.format("%02d", index + 1)}-${sanitizeFilePath(name)}.opus"), 64 * channelCount, name \
+					, artist, album, year, genre, coverFile)
+		}
 	}
 }
