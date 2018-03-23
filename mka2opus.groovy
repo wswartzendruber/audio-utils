@@ -42,11 +42,11 @@ void decodeFlacToTracks(File flac, File target, List<Long> trackStartPoints) {
  * @param genre   the genre of the track
  * @param cover   the front cover file of the track
  */
-void encodeOpus(File wav, File opus, int bitrate, String title, String artist, String album, String date, String genre \
-		, File cover) {
+void encodeOpus(File wav, File opus, int bitrate, int track, String title, String artist, String album, String date \
+		, String genre, File cover) {
 	
 	def opusencProcess = [ "opusenc", "--bitrate", bitrate, "--title", title, "--artist", artist, "--album", album \
-			, "--date", date, "--genre", genre, "--picture", cover, "--discard-comments", wav, opus ].execute()
+			, "--date", date, "--genre", genre, "--picture", cover, "--comment", "tracknumber=${track}", wav, opus ].execute()
 	
 	if (opusencProcess.waitFor())
 			throw new Exception("opusenc process exited unsuccessfully.")
@@ -108,8 +108,8 @@ IO.withTempDir { tempDir ->
 	GParsPool.withPool {
 		trackNames.eachWithIndexParallel { name, index ->
 			encodeOpus(new File(tempDir, "${index}.wav"), new File(albumDir \
-					, "${String.format("%02d", index + 1)}-${sanitizeFilePath(name)}.opus"), 64 * channelCount, name \
-					, artist, album, year, genre, coverFile)
+					, "${String.format("%02d", index + 1)}-${sanitizeFilePath(name)}.opus"), 64 * channelCount, index + 1 \
+					, name, artist, album, year, genre, coverFile)
 		}
 	}
 }
