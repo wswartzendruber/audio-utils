@@ -1,4 +1,9 @@
 /*
+ * Any copyright is dedicated to the Public Domain.
+ * https://creativecommons.org/publicdomain/zero/1.0/
+ */
+
+/*
  * This script will read a Matroska audio track from my personal library and generate a set of Opus files for it.
  */
 
@@ -15,15 +20,15 @@ import MKA
  * @param trackStartPoints a list of integers representing the sample length of each track
  */
 void decodeFlacToTracks(File flac, File target, List<Long> trackStartPoints) {
-	
+
 	trackStartPoints.eachWithIndex { startPoint, index ->
-		
+
 		def output   = new File(target, "${index}.wav")
 		def flacArgs = [ "flac", "--decode", "--output-name=${output}", "--skip=${startPoint}", flac ]
-		
+
 		if (index < (trackStartPoints.size() - 1))
 			flacArgs += "--until=${trackStartPoints[index + 1]}"
-		
+
 		if (flacArgs.execute().waitFor())
 			throw new Exception("flac process exited unsuccessfully.")
 	}
@@ -44,10 +49,10 @@ void decodeFlacToTracks(File flac, File target, List<Long> trackStartPoints) {
  */
 void encodeOpus(File wav, File opus, int bitrate, int track, String title, String artist, String album, String date \
 		, String genre, File cover) {
-	
+
 	def opusencProcess = [ "opusenc", "--bitrate", bitrate, "--title", title, "--artist", artist, "--album", album \
 			, "--date", date, "--genre", genre, "--picture", cover, "--comment", "tracknumber=${track}", wav, opus ].execute()
-	
+
 	if (opusencProcess.waitFor())
 			throw new Exception("opusenc process exited unsuccessfully.")
 }
@@ -60,7 +65,7 @@ void encodeOpus(File wav, File opus, int bitrate, int track, String title, Strin
  * @return the sanitized output
  */
 String sanitizeFilePath(String input) {
-	
+
 	return input.toLowerCase().replaceAll("\\s+", "-").replaceAll("[^a-z0-9\\-]", "").replaceAll("\\-+", "-")
 }
 
@@ -75,9 +80,9 @@ if (args.length != 2) {
 }
 
 IO.withTempDir { tempDir ->
-	
+
 	println("Generating Opus set from '${args[0]}' to '${args[1]}'")
-	
+
 	def mka              = new File(args[0])
 	def outputDir        = new File(args[1])
 	def flacFile         = new File(tempDir, "audio.flac")
@@ -93,11 +98,11 @@ IO.withTempDir { tempDir ->
 	def year             = MKA.parseValue(tags, "DATE_RELEASED")
 	def genre            = MKA.parseValue(tags, "GENRE")
 	def albumDir         = new File(new File(outputDir, sanitizeFilePath(artist)), sanitizeFilePath(album))
-	
+
 	MKA.dumpCover(mka, coverFile)
 	MKA.dumpFlac(mka, flacFile)
 	decodeFlacToTracks(flacFile, tempDir, trackStartPoints)
-	
+
 	if (albumDir.exists()) {
 		System.err.println("Directory '${albumDir}' already exists.")
 		System.exit(2)

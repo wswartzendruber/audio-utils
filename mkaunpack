@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+#
+# Any copyright is dedicated to the Public Domain.
+# https://creativecommons.org/publicdomain/zero/1.0/
+#
+
 mkvextract attachments "$1" 1:cover.jpg
 mkvextract tracks "$1" 0:audio.flac
 mkvextract tags "$1" > tags.xml

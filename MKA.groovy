@@ -1,8 +1,13 @@
+/*
+ * Any copyright is dedicated to the Public Domain.
+ * https://creativecommons.org/publicdomain/zero/1.0/
+ */
+
 import groovy.util.XmlSlurper
 import groovy.xml.MarkupBuilder
 
 public class MKA {
-	
+
 	/**
 	 * Reads a Matroska track and gets its channel count.
 	 *
@@ -11,12 +16,12 @@ public class MKA {
 	 * @return the channel count
 	 */
 	public static int channelCount(File mka) {
-		
+
 		def pattern        = /^\|   \+ Channels: (\d+)$/
 		def mkvinfoProcess = [ "mkvinfo", mka ].execute()
 		def bufferedReader = new BufferedReader(new InputStreamReader(mkvinfoProcess.getInputStream()))
 		def channelCount
-		
+
 		bufferedReader.eachLine { line ->
 			if (line ==~ pattern)
 				if (!channelCount)
@@ -24,16 +29,16 @@ public class MKA {
 				else
 					throw new Exception("Detected multiple possible channel counts.")
 		}
-		
+
 		if (mkvinfoProcess.waitFor())
 			throw new Exception("mkvinfo process exited unsuccessfully.")
-		
+
 		if (!channelCount)
 			throw new Exception("No channel count detected.")
-		
+
 		return channelCount
 	}
-	
+
 	/**
 	 * Reads a Matroska file and outputs the cover attachment.
 	 *
@@ -41,13 +46,13 @@ public class MKA {
 	 * @param output the output cover attachment
 	 */
 	public static void dumpCover(File mka, File output) {
-		
+
 		def mkvextractProcess = [ "mkvextract", "attachments", mka, "1:${output}" ].execute()
-		
+
 		if (mkvextractProcess.waitFor())
 			throw new Exception("mkvextract process exited unsuccessfully.")
 	}
-	
+
 	/**
 	 * Reads a Matroska file and outputs the first audio track.
 	 *
@@ -55,13 +60,13 @@ public class MKA {
 	 * @param output the output FLAC file
 	 */
 	public static void dumpFlac(File mka, File output) {
-		
+
 		def mkvextractProcess = [ "mkvextract", "tracks", mka, "0:${output}" ].execute()
-		
+
 		if (mkvextractProcess.waitFor())
 			throw new Exception("mkvextract process exited unsuccessfully.")
 	}
-	
+
 	/**
 	 * Parses a Matroska chapters and returns an array of sample counts, one for each track, of where each track starts.
 	 *
@@ -71,15 +76,15 @@ public class MKA {
 	 * @return an array of sample lengths, one for each track, of where each track starts
 	 */
 	public static List<Long> parseChapterStartPoints(def chapters, int sampleRate) {
-		
+
 		def startPoints = []
-		
+
 		chapters.EditionEntry.ChapterAtom.each \
 				{ startPoints += parseTimeStamp(it.ChapterTimeStart.toString(), sampleRate) }
-		
+
 		return startPoints
 	}
-	
+
 	/**
 	 * Parses Matroska chapters and returns an array of names, one for each track.
 	 *
@@ -88,14 +93,14 @@ public class MKA {
 	 * @return an array of names, one for each track
 	 */
 	public static List<String> parseChapterNames(def chapters) {
-		
+
 		def trackNames = []
-		
+
 		chapters.EditionEntry.ChapterAtom.each { trackNames += it.ChapterDisplay.ChapterString.toString() }
-		
+
 		return trackNames
 	}
-	
+
 	/**
 	 * Parses a time stamp into its sample length.
 	 *
@@ -105,24 +110,24 @@ public class MKA {
 	 * @return the sample count for the specified time stamp at the specified sample rate
 	 */
 	private static long parseTimeStamp(String timeStamp, int sampleRate) {
-		
+
 		def pattern = /^(\d\d):(\d\d):(\d\d).(\d\d\d\d\d\d\d\d\d)$/
-		
+
 		if (timeStamp ==~ pattern) {
-			
+
 			def segments = (timeStamp =~ pattern)[0]
-			
+
 			return segments[1].toLong() * 3600 * sampleRate \
 					+ segments[2].toLong() * 60 * sampleRate \
 					+ segments[3].toLong() * sampleRate \
 					+ Math.round((segments[4].toDouble() / 1000000000.0) * sampleRate)
-			
+
 		} else {
-			
+
 			throw new Exception("Time code '${timeStamp}' cannot be parsed.")
 		}
 	}
-	
+
 	/**
 	 * Parses Matroska tags and returns a single, album-wide value.
 	 *
@@ -132,19 +137,19 @@ public class MKA {
 	 * @return a single, album-wide value
 	 */
 	public static String parseValue(def tags, String name) {
-		
+
 		def returnValue = null
-		
+
 		tags.Tag.findAll({ Tag -> Tag?.Targets?.TargetTypeValue == "50" }) \
 				.Simple?.findAll({ Simple -> Simple?.Name == name }) \
 				.each { Simple -> returnValue = Simple?.String.toString() }
-		
+
 		if (returnValue == null)
 			throw new Exception("Requested album-wide value '${name}' could not be parsed from tags.")
-		
+
 		return returnValue
 	}
-	
+
 	/**
 	 * Reads a Matroska file and extracts the chapters out of it.
 	 *
@@ -153,16 +158,16 @@ public class MKA {
 	 * @return the chapter structure via {@code XmlSlurper}
 	 */
 	public static def readChapters(File mka) {
-		
+
 		def mkvextractProcess = [ "mkvextract", "chapters", mka ].execute()
 		def chapters          = new XmlSlurper().parse(mkvextractProcess.inputStream)
-		
+
 		if (mkvextractProcess.waitFor())
 			throw new Exception("mkvextract process exited unsuccessfully.")
-		
+
 		return chapters
 	}
-	
+
 	/**
 	 * Reads a Matroska file and extracts the tags out of it.
 	 *
@@ -171,16 +176,16 @@ public class MKA {
 	 * @return the tag structure via {@code XmlSlurper}
 	 */
 	public static def readTags(File mka) {
-		
+
 		def mkvextractProcess = [ "mkvextract", "tags", mka ].execute()
 		def tags              = new XmlSlurper().parse(mkvextractProcess.inputStream)
-		
+
 		if (mkvextractProcess.waitFor())
 			throw new Exception("mkvextract process exited unsuccessfully.")
-		
+
 		return tags
 	}
-	
+
 	/**
 	 * Reads a Matroska track and gets its sample rate.
 	 *
@@ -189,12 +194,12 @@ public class MKA {
 	 * @return the sample rate
 	 */
 	public static int sampleRate(File mka) {
-		
+
 		def pattern        = /^\|   \+ Sampling frequency: (\d+)$/
 		def mkvinfoProcess = [ "mkvinfo", mka ].execute()
 		def bufferedReader = new BufferedReader(new InputStreamReader(mkvinfoProcess.getInputStream()))
 		def sampleRate
-		
+
 		bufferedReader.eachLine { line ->
 			if (line ==~ pattern)
 				if (!sampleRate)
@@ -202,16 +207,16 @@ public class MKA {
 				else
 					throw new Exception("Detected multiple possible sample rates.")
 		}
-		
+
 		if (mkvinfoProcess.waitFor())
 			throw new Exception("mkvinfo process exited unsuccessfully.")
-		
+
 		if (!sampleRate)
 			throw new Exception("No sample rate detected.")
-		
+
 		return sampleRate
 	}
-	
+
 	/**
 	 * Writes the chapter listing using the track lengths and track names.
 	 *
@@ -221,17 +226,17 @@ public class MKA {
 	 */
 	public static void writeChapterListing(List<Integer> trackLengths, List<String> trackNames, List<Long> trackUids \
 			, File output) {
-		
+
 		if (trackLengths.size() != trackNames.size() || trackNames.size() != trackUids.size())
 			throw new Exception("trackLengths, trackNames and trackUids must all have the same element count.")
-		
+
 		def outputStream = new FileOutputStream(output)
 		def writer       = new PrintWriter(new OutputStreamWriter(outputStream, "UTF-8"))
 		def xml          = new MarkupBuilder(writer)
 		def total        = 0
-		
+
 		xml.mkp.xmlDeclaration(version: "1.0", encoding: "utf-8")
-		
+
 		xml.Chapters() {
 			EditionEntry() {
 				trackLengths.eachWithIndex { length, index ->
@@ -247,11 +252,11 @@ public class MKA {
 				}
 			}
 		}
-		
+
 		writer.flush()
 		outputStream.close()
 	}
-	
+
 	/**
 	 * Writes the Matroska XML tags to an output file.
 	 *
@@ -264,16 +269,16 @@ public class MKA {
 	 */
 	public static void writeTags(String artist, String album, String year, String genre, List<Integer> trackLengths \
 			, List<String> trackNames, List<Long> trackUids, File output) {
-		
+
 		if (trackLengths.size() != trackNames.size() || trackNames.size() != trackUids.size())
 			throw new Exception("trackLengths, trackNames and trackUids must all have the same element count.")
-		
+
 		def outputStream = new FileOutputStream(output)
 		def writer       = new PrintWriter(new OutputStreamWriter(outputStream, "UTF-8"))
 		def xml          = new MarkupBuilder(writer)
-		
+
 		xml.mkp.xmlDeclaration(version: "1.0", encoding: "utf-8")
-		
+
 		xml.Tags() {
 			Tag() {
 				Targets() {
@@ -317,11 +322,11 @@ public class MKA {
 				}
 			}
 		}
-		
+
 		writer.flush()
 		outputStream.close()
 	}
-	
+
 	/**
 	 * Muxes the final Matroska output.
 	 *
@@ -333,15 +338,15 @@ public class MKA {
 	 * @param output   the output Matroska file
 	 */
 	public static void writeMatroskaMux(File flac, File cover, File tags, File chapters, String title, File output) {
-		
+
 		def mkvmergeProcess = [ "mkvmerge", "--disable-track-statistics-tags", "--output", output, "--title", title \
 				, "--chapters", chapters, "--global-tags", tags, "--attachment-name", "Cover", "--attachment-mime-type" \
 				, "image/jpeg", "--attach-file", cover, flac ].execute()
-		
+
 		if (mkvmergeProcess.waitFor())
 			throw new Exception("mkvmerge process exited unsuccessfully.")
 	}
-	
+
 	/**
 	 * Returns a formatted time stamp reflecting the sample count.
 	 *
@@ -351,19 +356,18 @@ public class MKA {
 	 * @return formatted time stamp
 	 */
 	private static String timeStamp(long samples, int sampleRate) {
-		
+
 		def samplesPerHour   = sampleRate * 3600.0
 		def samplesPerMinute = sampleRate * 60.0
 		def otherFactor      = sampleRate / 1000000000.0
-		
+
 		def hours       = Math.floor(samples / samplesPerHour).intValue()
 		def minutes     = Math.floor((samples - hours * samplesPerHour) / samplesPerMinute).intValue()
 		def seconds     = Math.floor((samples - hours * samplesPerHour - minutes * samplesPerMinute) / sampleRate).intValue()
 		def nanoseconds = Math.floor((samples - hours * samplesPerHour - minutes * samplesPerMinute - seconds * sampleRate) \
 				/ otherFactor).intValue()
-		
+
 		return "${String.format("%02d", hours)}:${String.format("%02d", minutes)}:" \
 				+ "${String.format("%02d", seconds)}.${String.format("%9s", nanoseconds).substring(0, 9).replace(" ", "0")}"
 	}
 }
-
