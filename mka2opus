@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
+#
+# SPDX-FileCopyrightText: 2018 William Swartzendruber <wswartzendruber@gmail.com>
+#
+# SPDX-License-Identifier: CC0-1.0
+#
+
 base=$(dirname $0)
 
 groovy -classpath "${base}" "${base}/mka2opus.groovy" "$@"
-
